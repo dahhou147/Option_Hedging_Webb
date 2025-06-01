@@ -6,70 +6,76 @@ This project implements an advanced options hedging strategy using the Black-Sch
 
 - **Option Pricing**: Implementation of the Black-Scholes model for option pricing
 - **Greeks Calculation**: Delta, Gamma, Vega, Theta
-- **Multi-Greek Hedging**: Simultaneous neutralization of delta, gamma, and vega
+- **Multi-Greek Hedging**: Simultaneous neutralization of delta, gamma, and vega risks
 - **Monte Carlo Simulation**: Price path generation under risk-neutral measure
 - **Performance Analysis**: Performance metrics and visualizations
+- **Model Calibration**: Market data retrieval and parameter calibration
 
 ## Code Structure
 
-### Main Classes
+### Main Modules
 
-1. **BlackScholesPricer**
-   - European option pricing
-   - d1 and d2 parameters calculation
-   - Support for call and put options
+1. **pricing_model.py**
+   - `BlackScholesPricer`: European option pricing
+   - `Greeks`: Greeks calculation
+   - `ConstructPortfolio`: Hedging portfolio construction
+   - `GirsanovSimulator`: Price path simulation
+   - `VolatilitySmile`: Implied volatility surface calculation
 
-2. **Greeks**
-   - Greeks calculation (delta, gamma, vega, theta)
-   - Support for call and put options
+2. **calibration.py**
+   - `GetMarketData`: Market data retrieval and processing
+   - Model parameter calibration
+   - Options data management
 
-3. **ConstructPortfolio**
-   - Hedging portfolio construction
-   - Delta, gamma, and vega risk neutralization
-   - Dynamic portfolio management
-
-4. **GirsanovSimulator**
-   - Price path simulation under risk-neutral measure
-   - Implementation of Girsanov's theorem
-
-### Usage Example
-
-```python
-# Market parameters
-S0 = 100.0  # Initial price
-K = 100.0   # Strike price
-T = 1.0     # Time to maturity
-r = 0.05    # Risk-free rate
-sigma = 0.2 # Volatility
-N = 252     # Number of time steps
-M = 100     # Number of simulations
-
-# Create price paths
-simulator = GirsanovSimulator(S0, mu, r, sigma, N, T, M)
-paths = simulator.generate_paths()
-
-# Create hedging portfolio
-pricer = BlackScholesPricer(S0, K, T, sigma, r)
-portfolio = ConstructPortfolio(pricer, paths, N, T, K*0.9, K*1.1)
-
-# Execute hedging
-portfolio.hedge_portfolio(option_type="call")
-```
+3. **launche_simulation.py**
+   - `Launcher`: Main interface for running simulations
+   - Portfolio performance analysis
+   - Results visualization
 
 ## Installation
 
+1. Clone the repository:
+```bash
+git clone https://github.com/dahhou147/Option_Hedging_Webb.git
+cd Option_Hedging_Webb
+```
+
+2. Create and activate the virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Linux/Mac
+# or
+.\venv\Scripts\activate  # On Windows
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
+## Usage
+
+```python
+from launche_simulation import Launcher
+
+# Initialize the launcher with a ticker
+launcher = Launcher("MSFT")
+
+# Launch the simulation
+portfolio = launcher.launch()
+
+# Analyze results
+final_pnl = portfolio.pnl[-1, :]
+```
+
 ## Dependencies
 
-- NumPy
-- SciPy
-- Matplotlib
-- yfinance
+- NumPy >= 1.24.3
+- SciPy >= 1.10.1
+- Matplotlib >= 3.7.1
+- Pandas >= 2.0.2
+- yfinance >= 0.2.18
 - seaborn
-- dataclasses
 
 ## Advanced Features
 
@@ -99,7 +105,7 @@ pip install -r requirements.txt
 
 - John Hull's book on options, futures and other derivatives
 - Surface de volatilité, Peter TANKOV Paris Diderot University
-- Copulas: Sas Documentation, : https://support.sas.com/documentation/onlinedoc/ets/132/copula.pdf
+- Copulas: Sas Documentation, https://support.sas.com/documentation/onlinedoc/ets/132/copula.pdf
 
 ## Author
 
