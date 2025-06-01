@@ -105,7 +105,6 @@ final_pnl = portfolio.pnl[-1, :]
 
 - John Hull's book on options, futures and other derivatives
 - Surface de volatilité, Peter TANKOV Paris Diderot University
-- Copulas: Sas Documentation, https://support.sas.com/documentation/onlinedoc/ets/132/copula.pdf
 
 ## Author
 
