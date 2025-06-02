@@ -48,80 +48,74 @@ class Launcher:
         print("done")
         return portfolio
         
+    def run(self):
+        portfolio= self.launch()
+        final_pnl= portfolio.pnl[-1,:]
+        mean_pnl = np.mean(final_pnl)
+        std_pnl = np.std(final_pnl)
+        daily_returns = np.diff(portfolio.portfolio_values, axis=0) / portfolio.portfolio_values[:-1]
+        cumulative_returns = np.cumprod(1 + daily_returns, axis=0)
+        running_max = np.maximum.accumulate(cumulative_returns, axis=0)
+        drawdowns = (running_max - cumulative_returns) / running_max
+    
+        print("\nHedging Strategy Performance Metrics:")
+        print(f"Mean PnL: ${mean_pnl:.2f}")
+        print(f"PnL Standard Deviation: ${std_pnl:.2f}")
+        print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+        print(f"Maximum Drawdown: {np.max(drawdowns)*100:.2f}%")
+        positive_returns = np.sum(daily_returns > 0) / daily_returns.size
+        print(f"Win Rate: {positive_returns*100:.2f}%")
+        
+        # Calculate Value at Risk (VaR)
+        var_95 = np.percentile(daily_returns, 5)
+        print(f"95% Value at Risk: {var_95*100:.2f}%")
+              # Create visualization
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        
+        # Plot PnL distribution
+        sns.histplot(daily_returns.flatten(), ax=axes[0, 0], kde=True)
+        axes[0, 0].set_title('Daily Returns Distribution')
+        axes[0, 0].set_xlabel('Return')
+        axes[0, 0].set_ylabel('Frequency')
+        
+        # Plot cumulative PnL
+        cumulative_pnl = np.cumsum(portfolio.pnl, axis=0)
+        mean_cumulative_pnl = np.mean(cumulative_pnl, axis=1)
+        std_cumulative_pnl = np.std(cumulative_pnl, axis=1)
+        time_points = np.arange(N)
+        
+        axes[0, 1].plot(time_points, mean_cumulative_pnl, label='Mean PnL')
+        axes[0, 1].fill_between(time_points, 
+                                mean_cumulative_pnl - std_cumulative_pnl,
+                                mean_cumulative_pnl + std_cumulative_pnl,
+                                alpha=0.2)
+        axes[0, 1].set_title('Cumulative PnL')
+        axes[0, 1].set_xlabel('Time Step')
+        axes[0, 1].set_ylabel('Cumulative PnL')
+        axes[0, 1].legend()
+        
+        mean_drawdowns = np.mean(drawdowns, axis=1)
+        axes[1, 0].plot(time_points[:-1], mean_drawdowns)
+        axes[1, 0].set_title('Average Drawdown')
+        axes[1, 0].set_xlabel('Time Step')
+        axes[1, 0].set_ylabel('Drawdown')
+        
+        mean_hedge_ratios = np.mean(portfolio.old_coeffs, axis=1)
+        axes[1, 1].plot(time_points, mean_hedge_ratios[:, 0], label='Option 1')
+        axes[1, 1].plot(time_points, mean_hedge_ratios[:, 1], label='Option 2')
+        axes[1, 1].plot(time_points, mean_hedge_ratios[:, 2], label='Stock')
+        axes[1, 1].set_title('Average Hedge Ratios')
+        axes[1, 1].set_xlabel('Time Step')
+        axes[1, 1].set_ylabel('Hedge Ratio')
+        axes[1, 1].legend()
+          
+    
+        plt.suptitle(f'Hedging Strategy Analysis for {ticker}', fontsize=16)
+        plt.tight_layout()
+        plt.show()
 
-#%%
 if __name__ == "__main__":
-    # Example usage
     ticker = "MSFT"
     launcher = Launcher(ticker)
-    portfolio = launcher.launch()
-    final_pnl = portfolio.pnl[-1, :]
-    # mean_pnl = np.mean(final_pnl)   
-    # std_pnl = np.std(final_pnl)
-    # sharpe_ratio = np.sqrt(252) * mean_pnl / std_pnl if std_pnl != 0 else 0
+    launcher.run()
     
-    # daily_returns = np.diff(portfolio.portfolio_values, axis=0) / portfolio.portfolio_values[:-1]
-    
-    # cumulative_returns = np.cumprod(1 + daily_returns, axis=0)
-    # running_max = np.maximum.accumulate(cumulative_returns, axis=0)
-    # drawdowns = (running_max - cumulative_returns) / running_max
-    
-    # print("\nHedging Strategy Performance Metrics:")
-    # print(f"Mean PnL: ${mean_pnl:.2f}")
-    # print(f"PnL Standard Deviation: ${std_pnl:.2f}")
-    # print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
-    # print(f"Maximum Drawdown: {np.max(drawdowns)*100:.2f}%")
-    
-    # # Calculate additional metrics
-    # positive_returns = np.sum(daily_returns > 0) / daily_returns.size
-    # print(f"Win Rate: {positive_returns*100:.2f}%")
-    
-    # # Calculate Value at Risk (VaR)
-    # var_95 = np.percentile(daily_returns, 5)
-    # print(f"95% Value at Risk: {var_95*100:.2f}%")
-    
-    # # Create visualization
-    # fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    
-    # # Plot PnL distribution
-    # sns.histplot(daily_returns.flatten(), ax=axes[0, 0], kde=True)
-    # axes[0, 0].set_title('Daily Returns Distribution')
-    # axes[0, 0].set_xlabel('Return')
-    # axes[0, 0].set_ylabel('Frequency')
-    
-    # # Plot cumulative PnL
-    # cumulative_pnl = np.cumsum(portfolio.pnl, axis=0)
-    # mean_cumulative_pnl = np.mean(cumulative_pnl, axis=1)
-    # std_cumulative_pnl = np.std(cumulative_pnl, axis=1)
-    # time_points = np.arange(N)
-    
-    # axes[0, 1].plot(time_points, mean_cumulative_pnl, label='Mean PnL')
-    # axes[0, 1].fill_between(time_points, 
-    #                         mean_cumulative_pnl - std_cumulative_pnl,
-    #                         mean_cumulative_pnl + std_cumulative_pnl,
-    #                         alpha=0.2)
-    # axes[0, 1].set_title('Cumulative PnL')
-    # axes[0, 1].set_xlabel('Time Step')
-    # axes[0, 1].set_ylabel('Cumulative PnL')
-    # axes[0, 1].legend()
-    
-    # mean_drawdowns = np.mean(drawdowns, axis=1)
-    # axes[1, 0].plot(time_points[:-1], mean_drawdowns)
-    # axes[1, 0].set_title('Average Drawdown')
-    # axes[1, 0].set_xlabel('Time Step')
-    # axes[1, 0].set_ylabel('Drawdown')
-    
-    # mean_hedge_ratios = np.mean(portfolio.old_coeffs, axis=1)
-    # axes[1, 1].plot(time_points, mean_hedge_ratios[:, 0], label='Option 1')
-    # axes[1, 1].plot(time_points, mean_hedge_ratios[:, 1], label='Option 2')
-    # axes[1, 1].plot(time_points, mean_hedge_ratios[:, 2], label='Stock')
-    # axes[1, 1].set_title('Average Hedge Ratios')
-    # axes[1, 1].set_xlabel('Time Step')
-    # axes[1, 1].set_ylabel('Hedge Ratio')
-    # axes[1, 1].legend()
-    
-    # plt.suptitle(f'Hedging Strategy Analysis for {ticker}', fontsize=16)
-    # plt.tight_layout()
-    # plt.show()
-
-# %%
