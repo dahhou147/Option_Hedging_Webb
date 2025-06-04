@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Dict
 import numpy as np
 import yfinance as yf
 import pandas as pd
-
+import logging
 from pricing_model import BlackScholesPricer, VolatilitySmile
 
 ANNUALIZATION_FACTOR = 252
@@ -12,12 +12,15 @@ DEFAULT_RISK_FREE_RATE = 0.03
 MIN_TRADING_VOLUME = 10
 MIN_IMPLIED_VOL = 0.01
 MAX_IMPLIED_VOL = 2.0
-
+logging.basicConfig(
+    level=logging.INFO,  # ou DEBUG, WARNING, etc.
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class GetMarketData:
     """
     Class for calibrating option pricing model parameters from market data.
-
     This class handles the fetching of market data, calculation of implied volatilities,
     and calibration of model parameters for a specific stock ticker.
     """
@@ -99,7 +102,7 @@ class GetMarketData:
             options = self.option_chain(expiry_date)
             return options.calls, options.puts
         except Exception as e:
-            print(f"No options available for date {expiry_date}: {e}")
+            logger.error(f"No options available for date {expiry_date}: {e}")
             return None, None
 
     def calculate_time_to_maturity(self, expiry_date: str) -> float:
@@ -118,7 +121,8 @@ class GetMarketData:
             days = (expiry - today).days
             return max(days, 1) / 365.0
         except ValueError as e:
-            raise ValueError(f"Invalid date format. Use YYYY-MM-DD: {str(e)}")
+            logger.error(f"Invalid date format. Use YYYY-MM-DD: {str(e)}")
+            return 0
 
     def calibrate_implied_volatility(
         self, expiry_date: str
@@ -134,11 +138,11 @@ class GetMarketData:
         """
         calls, _ = self.get_option_data(expiry_date)
         if calls is None:
-            raise ValueError("No call options data available")
+            logger.error("No call options data available")
 
         calls = calls[calls["volume"] > MIN_TRADING_VOLUME]
         if calls.empty:
-            raise ValueError("No options with sufficient trading volume")
+            logger.error("No options with sufficient trading volume")
 
         maturity = self.calculate_time_to_maturity(expiry_date)
 
@@ -203,7 +207,7 @@ class GetMarketData:
             return df
 
         except Exception as e:
-            print(f"Error converting volatility data: {str(e)}")
+            logger.error(f"Error converting volatility data: {str(e)}")
             return pd.DataFrame()
 
     def get_all_maturities_data(self) -> pd.DataFrame:
@@ -215,7 +219,7 @@ class GetMarketData:
                 df = self.get_volatility_dataframe(volatility_data)
                 all_data.append(df)
             except Exception as e:
-                print(f"Error processing expiry {expiry}: {str(e)}")
+                logger.error(f"Error processing expiry {expiry}: {str(e)}")
                 continue
 
         if not all_data:
@@ -234,5 +238,5 @@ def main(ticker: str) -> pd.DataFrame:
 if __name__ == "__main__":
     ticker = "AAPL"
     df = main(ticker)
-    print(df)
+    logger.info(df)
 # %%

@@ -60,14 +60,6 @@ class BlackScholesPricer:
             -self.q * self.T
         ) * ss.norm.cdf(-d1)
 
-    def delta(self, S, tau, option_type="call"):
-        """Calculate delta of the option."""
-        d1, _ = self._d1_d2(S, tau)
-        if option_type == "call":
-            return np.exp(-self.q * tau) * ss.norm.cdf(d1)
-        if option_type == "put":
-            return -np.exp(-self.q * tau) * ss.norm.cdf(-d1)
-        raise ValueError("option_type must be 'call' or 'put'")
 
     def copy(self):
         return BlackScholesPricer(self.S0, self.K, self.T, self.sigma, self.r, self.q)
@@ -329,15 +321,15 @@ class GirsanovSimulator:
 if __name__ == "__main__":
     """Example of portfolio construction and hedging with performance analysis."""
     # Market parameters
-    S0 = 100.0  # Initial stock price
-    K = 100.0  # Strike price of the option to hedge
-    T = 1.0  # Time to maturity (1 year)
-    r = 0.05  # Risk-free rate
-    q = 0.0  # Dividend yield
-    sigma = 0.2  # Volatility
-    N = 252  # Number of time steps (daily rebalancing)
-    M = 100  # Number of simulations
-    mu = 0.1  # Drift
+    S0 = 100.0  # initial stock price
+    K = 100.0  # strike price of the option to hedge
+    T = 1.0  # time to maturity (1 year)
+    r = 0.05  # risk-free rate
+    q = 0.0  # dividend yield
+    sigma = 0.2  # volatility
+    N = 252  # number of time steps (daily rebalancing)
+    M = 100  # number of simulations
+    mu = 0.1  # drift
 
     gbm = GirsanovSimulator(S0, mu, r, sigma, N, T, M)
     paths = gbm.generate_paths()
@@ -347,7 +339,7 @@ if __name__ == "__main__":
     K1 = K * 0.9
     K2 = K * 1.1
     options_types = ["call", "call", "put"]
-    implied_volatility = [0.2, 0.2, 0.2]
+    implied_volatility = [0.2, 0.26, 0.29]
     portfolio = ConstructPortfolio(pricer, paths, K1, K2, options_types, implied_volatility)
 
     portfolio.hedge_portfolio()
