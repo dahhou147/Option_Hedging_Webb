@@ -1,0 +1,403 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{natbib}
+
+\geometry{margin=1in}
+
+\title{Advanced Options Hedging Strategy:\\
+Multi-Greek Neutralization Using Black-Scholes Framework}
+\author{Oussama Dahhou}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper presents an advanced options hedging strategy that simultaneously neutralizes delta, gamma, and vega risks in an options portfolio. The methodology combines market data calibration, Black-Scholes pricing theory, and dynamic portfolio rebalancing to construct a self-financing hedging portfolio. Using real market data from yfinance, we calibrate implied volatilities and implement a multi-option hedging strategy that employs two auxiliary options with different strikes along with the underlying asset to achieve complete risk neutralization. The performance of the hedging strategy is evaluated through Monte Carlo simulation under the risk-neutral measure using Girsanov's theorem. Results demonstrate the effectiveness of the approach in reducing portfolio risk while maintaining hedging efficiency.
+\end{abstract}
+
+\section{Introduction}
+
+Options hedging is a fundamental problem in quantitative finance, where the goal is to construct a portfolio that minimizes exposure to various risk factors. Traditional delta hedging neutralizes only the first-order price sensitivity, leaving the portfolio exposed to higher-order risks such as gamma (convexity) and vega (volatility sensitivity). This paper addresses the challenge of simultaneously hedging multiple Greeks using a combination of options and the underlying asset.
+
+The contribution of this work lies in:
+\begin{itemize}
+    \item Implementation of a multi-Greek hedging strategy that neutralizes delta, gamma, and vega simultaneously
+    \item Real-world calibration using market data from yfinance
+    \item Dynamic portfolio rebalancing with self-financing constraints
+    \item Comprehensive performance analysis including PnL distribution, drawdowns, and risk metrics
+\end{itemize}
+
+\section{Theoretical Background}
+
+\subsection{Black-Scholes Model}
+
+The Black-Scholes model assumes that the underlying asset price $S_t$ follows a geometric Brownian motion:
+
+\begin{equation}
+dS_t = \mu S_t dt + \sigma S_t dW_t
+\end{equation}
+
+where $\mu$ is the drift, $\sigma$ is the volatility, and $W_t$ is a standard Brownian motion.
+
+Under the risk-neutral measure $\mathbb{Q}$, the drift is replaced by the risk-free rate $r$:
+
+\begin{equation}
+dS_t = r S_t dt + \sigma S_t dW_t^{\mathbb{Q}}
+\end{equation}
+
+The Black-Scholes formula for a European call option is:
+
+\begin{equation}
+C(S_0, K, T, r, \sigma, q) = S_0 e^{-qT} \Phi(d_1) - K e^{-rT} \Phi(d_2)
+\end{equation}
+
+where:
+\begin{align}
+d_1 &= \frac{\ln(S_0/K) + (r - q + \sigma^2/2)T}{\sigma\sqrt{T}} \\
+d_2 &= d_1 - \sigma\sqrt{T}
+\end{align}
+
+and $\Phi(\cdot)$ is the cumulative distribution function of the standard normal distribution, $q$ is the dividend yield.
+
+\subsection{The Greeks}
+
+The Greeks measure the sensitivity of option prices to various parameters:
+
+\subsubsection{Delta ($\Delta$)}
+Delta measures the sensitivity to the underlying asset price:
+\begin{equation}
+\Delta = \frac{\partial C}{\partial S} = e^{-qT} \Phi(d_1)
+\end{equation}
+
+\subsubsection{Gamma ($\Gamma$)}
+Gamma measures the rate of change of delta:
+\begin{equation}
+\Gamma = \frac{\partial^2 C}{\partial S^2} = \frac{e^{-qT} \phi(d_1)}{S \sigma \sqrt{T}}
+\end{equation}
+
+\subsubsection{Vega ($\nu$)}
+Vega measures sensitivity to volatility:
+\begin{equation}
+\nu = \frac{\partial C}{\partial \sigma} = S e^{-qT} \phi(d_1) \sqrt{T}
+\end{equation}
+
+\subsubsection{Theta ($\Theta$)}
+Theta measures time decay:
+\begin{equation}
+\Theta = \frac{\partial C}{\partial t} = -\frac{S \sigma e^{-qT} \phi(d_1)}{2\sqrt{T}} - r K e^{-rT} \Phi(d_2)
+\end{equation}
+
+\subsection{Girsanov's Theorem}
+
+Girsanov's theorem allows us to change the probability measure from the physical measure $\mathbb{P}$ to the risk-neutral measure $\mathbb{Q}$. The Radon-Nikodym derivative is:
+
+\begin{equation}
+\frac{d\mathbb{Q}}{d\mathbb{P}} = \exp\left(-\frac{\theta^2 T}{2} - \theta W_T\right)
+\end{equation}
+
+where $\theta = \frac{\mu - r}{\sigma}$ is the market price of risk. This transformation allows us to simulate paths under the risk-neutral measure for option pricing.
+
+\section{Methodology}
+
+\subsection{Multi-Greek Hedging Strategy}
+
+The goal is to hedge an option with strike $K$ by constructing a portfolio of:
+\begin{itemize}
+    \item $\alpha_1$ units of option 1 with strike $K_1$
+    \item $\alpha_2$ units of option 2 with strike $K_2$
+    \item $\alpha_3$ units of the underlying asset
+\end{itemize}
+
+The hedging condition requires:
+\begin{align}
+\alpha_1 \Delta_1 + \alpha_2 \Delta_2 + \alpha_3 &= \Delta_0 \\
+\alpha_1 \Gamma_1 + \alpha_2 \Gamma_2 &= \Gamma_0 \\
+\alpha_1 \nu_1 + \alpha_2 \nu_2 &= \nu_0
+\end{align}
+
+This system can be written in matrix form:
+\begin{equation}
+\begin{bmatrix}
+\Delta_1 & \Delta_2 & 1 \\
+\Gamma_1 & \Gamma_2 & 0 \\
+\nu_1 & \nu_2 & 0
+\end{bmatrix}
+\begin{bmatrix}
+\alpha_1 \\
+\alpha_2 \\
+\alpha_3
+\end{bmatrix}
+=
+\begin{bmatrix}
+\Delta_0 \\
+\Gamma_0 \\
+\nu_0
+\end{bmatrix}
+\end{equation}
+
+When the matrix is ill-conditioned, we apply Tikhonov regularization:
+\begin{equation}
+(\mathbf{A}^T \mathbf{A} + \lambda \mathbf{I}) \boldsymbol{\alpha} = \mathbf{A}^T \mathbf{b}
+\end{equation}
+
+where $\lambda$ is a small regularization parameter.
+
+\subsection{Market Data Calibration}
+
+The calibration process involves:
+\begin{enumerate}
+    \item Fetching historical stock data and option chains from yfinance
+    \item Calculating historical volatility from log returns
+    \item Computing implied volatilities for different strikes using Newton-Raphson method
+    \item Filtering options based on trading volume and valid implied volatility ranges
+\end{enumerate}
+
+The implied volatility $\sigma_{imp}$ is found by solving:
+\begin{equation}
+C_{market}(K, T) = C_{BS}(S_0, K, T, r, \sigma_{imp}, q)
+\end{equation}
+
+\subsection{Dynamic Hedging Implementation}
+
+The hedging portfolio is rebalanced at discrete time intervals:
+\begin{enumerate}
+    \item At time $t=0$, compute initial hedge ratios and establish the portfolio
+    \item At each rebalancing time $t_i$, update hedge ratios based on current spot price and time to maturity
+    \item Adjust positions to maintain self-financing constraint:
+    \begin{equation}
+    \text{Cash}_{t_i} = \text{Cash}_{t_{i-1}} e^{r \Delta t} - \sum_{j=1}^{3} \Delta \alpha_j \cdot \text{Price}_j
+    \end{equation}
+    \item Track portfolio value and PnL:
+    \begin{equation}
+    \text{Portfolio Value} = \sum_{j=1}^{3} \alpha_j \cdot \text{Price}_j + \text{Cash}
+    \end{equation}
+    \begin{equation}
+    \text{PnL} = \text{Portfolio Value} - \text{Option Value}
+    \end{equation}
+\end{enumerate}
+
+\section{Implementation}
+
+\subsection{Code Structure}
+
+The implementation consists of several key modules:
+
+\subsubsection{Pricing Model (\texttt{pricing\_model.py})}
+\begin{itemize}
+    \item \texttt{BlackScholesPricer}: Implements Black-Scholes pricing formulas
+    \item \texttt{Greeks}: Calculates all option Greeks
+    \item \texttt{VolatilitySmile}: Computes implied volatilities from market prices
+    \item \texttt{ConstructPortfolio}: Builds and manages the hedging portfolio
+    \item \texttt{GirsanovSimulator}: Generates risk-neutral price paths
+\end{itemize}
+
+\subsubsection{Calibration (\texttt{calibration.py})}
+\begin{itemize}
+    \item \texttt{GetMarketData}: Fetches and processes market data
+    \item Implied volatility calibration for multiple strikes and maturities
+    \item Data validation and filtering
+\end{itemize}
+
+\subsubsection{Simulation Launcher (\texttt{launche\_simulation.py})}
+\begin{itemize}
+    \item \texttt{Launcher}: Main interface for running simulations
+    \item Performance metrics calculation
+    \item Visualization generation
+\end{itemize}
+
+\subsection{Key Algorithm: Portfolio Hedging}
+
+The core hedging algorithm proceeds as follows:
+
+\begin{enumerate}
+    \item Initialize: Set initial spot price $S_0$, time to maturity $T$, and implied volatilities
+    \item For each simulation path $i = 1, \ldots, M$:
+    \begin{enumerate}
+        \item At $t=0$: Compute initial hedge ratios $\boldsymbol{\alpha}_0$ and establish portfolio
+        \item For each time step $j = 1, \ldots, N$:
+        \begin{enumerate}
+            \item Update spot price: $S_{j,i}$ from simulated path
+            \item Update time to maturity: $\tau = T - j \Delta t$
+            \item Recompute Greeks for all options
+            \item Solve for new hedge ratios $\boldsymbol{\alpha}_j$
+            \item Adjust positions and update cash account
+            \item Record portfolio value and PnL
+        \end{enumerate}
+    \end{enumerate}
+    \item Aggregate results across all paths
+\end{enumerate}
+
+\section{Results and Analysis}
+
+\subsection{Simulation Parameters}
+
+The simulations were conducted with the following parameters:
+\begin{itemize}
+    \item Number of time steps: $N = 252$ (daily rebalancing)
+    \item Number of Monte Carlo paths: $M = 100$
+    \item Risk-free rate: $r = 3\%$ (or calibrated from market)
+    \item Rebalancing frequency: Daily
+\end{itemize}
+
+\subsection{Performance Metrics}
+
+The hedging strategy performance is evaluated using several metrics:
+
+\subsubsection{Profit and Loss (PnL)}
+The final PnL distribution provides insight into hedging effectiveness. A well-hedged portfolio should have:
+\begin{itemize}
+    \item Mean PnL close to zero
+    \item Low standard deviation
+    \item Symmetric distribution around zero
+\end{itemize}
+
+\subsubsection{Value at Risk (VaR)}
+The 95\% Value at Risk measures the potential loss at the 5th percentile of the return distribution:
+\begin{equation}
+\text{VaR}_{95\%} = \text{Percentile}(R, 5\%)
+\end{equation}
+
+\subsubsection{Drawdown Analysis}
+Maximum drawdown measures the peak-to-trough decline:
+\begin{equation}
+\text{MDD} = \max_t \left( \frac{\text{Peak}_t - \text{Value}_t}{\text{Peak}_t} \right)
+\end{equation}
+
+\subsubsection{Win Rate}
+The percentage of periods with positive returns:
+\begin{equation}
+\text{Win Rate} = \frac{\# \text{ of positive returns}}{\text{Total periods}} \times 100\%
+\end{equation}
+
+\subsection{Visualizations}
+
+The following figures illustrate key aspects of the hedging strategy:
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/volatility_smile.png}
+\caption{Implied Volatility Smile: The volatility smile shows how implied volatility varies with strike price, demonstrating the market's expectation of volatility for different moneyness levels.}
+\label{fig:vol_smile}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/cumulative_pnl.png}
+\caption{Cumulative PnL Over Time: This figure shows the evolution of cumulative profit and loss with confidence bands, demonstrating the stability of the hedging strategy.}
+\label{fig:cum_pnl}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/hedge_ratios.png}
+\caption{Hedge Ratios Evolution: The dynamic adjustment of hedge ratios (weights of hedging options and underlying asset) over time as the portfolio is rebalanced.}
+\label{fig:hedge_ratios}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/pnl_distribution.png}
+\caption{PnL Distribution: Histogram of final PnL values across all simulation paths, showing the effectiveness of the hedging strategy in minimizing risk.}
+\label{fig:pnl_dist}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/price_paths.png}
+\caption{Simulated Price Paths: Sample of Monte Carlo simulated paths under the risk-neutral measure using Girsanov's theorem.}
+\label{fig:paths}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/drawdown.png}
+\caption{Drawdown Analysis: Maximum drawdown over time, indicating periods of portfolio value decline relative to previous peaks.}
+\label{fig:drawdown}
+\end{figure}
+
+\subsection{Discussion of Results}
+
+The multi-Greek hedging strategy demonstrates several key characteristics:
+
+\begin{enumerate}
+    \item \textbf{Effective Risk Neutralization}: By simultaneously hedging delta, gamma, and vega, the portfolio remains relatively insensitive to small movements in the underlying price and volatility.
+    
+    \item \textbf{Dynamic Rebalancing}: The strategy requires frequent rebalancing as market conditions change. The hedge ratios evolve over time as the option approaches expiration and as the underlying price moves.
+    
+    \item \textbf{Self-Financing Constraint}: The cash account is managed to ensure the portfolio remains self-financing, with cash earning the risk-free rate between rebalancing periods.
+    
+    \item \textbf{Model Limitations}: The strategy assumes:
+    \begin{itemize}
+        \item Continuous rebalancing (approximated by daily rebalancing)
+        \item No transaction costs
+        \item Constant volatility (though implied volatilities are used)
+        \item Perfect liquidity
+    \end{itemize}
+\end{enumerate}
+
+\section{Conclusion}
+
+This paper presents a comprehensive implementation of a multi-Greek options hedging strategy. The methodology successfully combines:
+
+\begin{itemize}
+    \item Real-world market data calibration
+    \item Black-Scholes pricing theory
+    \item Dynamic portfolio rebalancing
+    \item Monte Carlo simulation under risk-neutral measure
+\end{itemize}
+
+The results demonstrate that simultaneous hedging of delta, gamma, and vega can effectively reduce portfolio risk. However, the strategy's performance depends on several factors including rebalancing frequency, transaction costs (not modeled here), and model assumptions.
+
+\subsection{Future Work}
+
+Potential extensions and improvements include:
+
+\begin{enumerate}
+    \item \textbf{Transaction Costs}: Incorporate bid-ask spreads and trading fees
+    \item \textbf{American Options}: Extend to early exercise scenarios
+    \item \textbf{Alternative Volatility Models}: Implement stochastic volatility models (Heston, SABR)
+    \item \textbf{Optimization}: Develop methods to optimize hedge ratios considering transaction costs
+    \item \textbf{Backtesting}: Historical performance analysis on real market data
+    \item \textbf{Risk Metrics}: Additional risk measures such as Expected Shortfall (CVaR)
+\end{enumerate}
+
+\section*{Acknowledgments}
+
+The author acknowledges the use of yfinance for market data retrieval and the scientific Python ecosystem (NumPy, SciPy, Pandas, Matplotlib) for numerical computations and visualizations.
+
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+
+\bibitem{hull}
+J. C. Hull, \textit{Options, Futures, and Other Derivatives}, 10th ed. Pearson, 2017.
+
+\bibitem{tankov}
+P. Tankov, \textit{Surface de Volatilité}, Université Paris Diderot, Course Notes.
+
+\bibitem{black_scholes}
+F. Black and M. Scholes, ``The Pricing of Options and Corporate Liabilities,'' \textit{Journal of Political Economy}, vol. 81, no. 3, pp. 637--654, 1973.
+
+\bibitem{girsanov}
+I. V. Girsanov, ``On Transforming a Certain Class of Stochastic Processes by Absolutely Continuous Substitution of Measures,'' \textit{Theory of Probability \& Its Applications}, vol. 5, no. 3, pp. 285--301, 1960.
+
+\bibitem{greeks}
+E. G. Haug, \textit{The Complete Guide to Option Pricing Formulas}, 2nd ed. McGraw-Hill, 2007.
+
+\end{thebibliography}
+
+\end{document}
+

@@ -43,7 +43,7 @@ if __name__ == "__main__":
     X = ss.norm.rvs(size=M)
     alphas = np.linspace(0, 1, 100)
     L = [x(alpha) for alpha in alphas]
-    ES = EvarAlpha(X, alpha).short_fall()
+    ES = [EvarAlpha(X, alpha).short_fall() for alpha in alphas]
     L_empiric = [EvarAlpha(X, alpha).evar() for alpha in alphas]
     plt.plot(alphas, L, label="VaR")
     plt.plot(alphas, L_empiric, label="EVAR")

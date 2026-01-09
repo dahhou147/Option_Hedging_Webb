@@ -160,10 +160,15 @@ class Launcher:
         plt.tight_layout()
         plt.show()
 
-
+#%%
 if __name__ == "__main__":
     ticker = "MSFT"
     launcher = Launcher(ticker)
     portfolio = launcher.launch()
     launcher.run()
 # %%
+
+
+nums = [1, 2, 3, 4, 5]
+s = max(nums)
+nums.index(s)  # Returns the index of the maximum value in the list

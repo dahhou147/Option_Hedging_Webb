@@ -64,7 +64,7 @@ class BlackScholesPricer:
     def copy(self):
         return BlackScholesPricer(self.S0, self.K, self.T, self.sigma, self.r, self.q)
 
-
+#comment_generalisé_sur_tous_les_derivés
 class Greeks:
     """Class for Greeks calculations."""
 
@@ -115,7 +115,7 @@ class VolatilitySmile:
     def implied_volatility(self, strike: float, market_price: float):
         """Calculate implied volatility using Newton-Raphson method."""
 
-        def f(sigma):
+        def f(sigma): 
             temp_pricer = self.pricer.copy()  # éviter les effets de bord
             temp_pricer.sigma = sigma
             temp_pricer.K = strike
