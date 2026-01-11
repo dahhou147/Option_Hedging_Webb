@@ -1,6 +1,9 @@
+#%%
 import scipy.stats as ss
 import scipy.optimize as so
 from scipy import interpolate
+import matplotlib.pyplot as plt
+
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import Delaunay
 import pandas as pd
@@ -11,23 +14,28 @@ from config.logging_config import setup_logger
 
 logger = setup_logger(name="iv_surface", log_file=None)
 
-
-
-def get_free_rate():
-    df = obb.economy.interest_rates(country="USA", maturity="10Y").to_df()
-    if not df.empty:
-        return df["value"].iloc[-1] 
-    else:
-        logger.warning("10-year US Treasury rate not found, defaulting to 0.03")
-        return 0.03
-
-class IvBlackScholes:
+class DataManager:
     def __init__(self, ticker):
         self.ticker = ticker
         self.data = obb.equity.price.historical(symbol=self.ticker).to_df()
         self.options = obb.derivatives.options.chains(symbol=self.ticker).to_df()
-        self.free_rate = get_free_rate()
+        self.free_rate = self.get_free_rate()
         self.spot_price = self.data["close"].iloc[-1]
+    
+    def get_free_rate(self):
+        df = obb.economy.interest_rates(country="USA", maturity="10Y").to_df()
+        if not df.empty:
+            return df["value"].iloc[-1] 
+        else:
+            logger.warning("10-year US Treasury rate not found, defaulting to 0.03")
+            return 0.03
+
+
+
+
+class IvBlackScholes(DataManager):
+    def __init__(self, ticker):
+        super().__init__(ticker=ticker)
         self.processed_options = self.preprocessing()
         self.market_data = self.apply_kernel()
         self.interpolated_surface = None
@@ -190,6 +198,62 @@ class IvBlackScholes:
 
         logger.info("Interpolation completed.")
         return self.interpolated_surface
+    
+    def detect_and_fill_gaps(self):
+        """
+        Détecte et comble les trous dans la surface
+        """
+        if self.market_data is None:
+            return
+        
+        df = self.market_data.copy()
+        
+        strikes = np.sort(df['strike'].unique())
+        maturities = np.sort(df['time_to_expiry'].unique())
+        
+        print(f"Points disponibles: {len(strikes)} strikes × {len(maturities)} maturités")
+        
+        strike_step = np.median(np.diff(strikes))
+        maturity_step = np.median(np.diff(maturities))
+        
+        filled_data = []
+        
+        for T in maturities:
+            subset = df[df['time_to_expiry'] == T]
+            
+            if len(subset) > 1:
+                interp_1d = interpolate.interp1d(
+                    subset['strike'], subset['implied_vol'],
+                    kind='linear', bounds_error=False, fill_value='extrapolate'
+                )
+                
+                for K in strikes:
+                    if K not in subset['strike'].values:
+                        vol = float(interp_1d(K))
+                        if 0.01 < vol < 1.5:  
+                            filled_data.append({
+                                'strike': K,
+                                'time_to_expiry': T,
+                                'moneyness': K / self.spot_price,
+                                'implied_vol': vol,
+                                'is_filled': True
+                            })
+        
+        if filled_data:
+            filled_df = pd.DataFrame(filled_data)
+            df['is_filled'] = False
+            combined_df = pd.concat([df, filled_df], ignore_index=True)
+            
+            print(f"Points ajoutés: {len(filled_df)}")
+            self.market_data = combined_df
+        
+        return self.market_data
+    
+   
+            
+#%%   
 if __name__ == "__main__":
     test = IvBlackScholes("AAPL")
-    test.interpolate_surface_multimethod()
+    print(test.interpolate_surface_multimethod())
+    pass
+# %%
