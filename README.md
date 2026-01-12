@@ -27,7 +27,7 @@ This project implements an advanced options hedging strategy using the Black-Sch
    - Model parameter calibration
    - Options data management
 
-3. **launche_simulation.py**
+3. **launch_simulation.py**
    - `Launcher`: Main interface for running simulations
    - Portfolio performance analysis
    - Results visualization
@@ -56,7 +56,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```python
-from launche_simulation import Launcher
+from simulations.launch_simulation import Launcher
 
 # Initialize the launcher with a ticker
 launcher = Launcher("MSFT")
