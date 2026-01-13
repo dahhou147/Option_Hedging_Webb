@@ -54,7 +54,20 @@ wheels/
 
 # Logs
 *.log
-
+*.ipynb
+*.csv
+*.json
+*.yaml
+*.yml
+*.xml
+*.html
+*.css
+*.js
+*.ts
+*.tsx
+*.jsx
+*.tsx
+*.jsx
 # Local development settings
 .env
 .env.local
