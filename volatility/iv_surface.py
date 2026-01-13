@@ -23,7 +23,7 @@ class DataManager:
     def get_free_rate(self):
         df = obb.economy.interest_rates(country="USA", maturity="10Y").to_df()
         if not df.empty:
-            return df["value"].iloc[-1] / 100.0  # Convertir en décimal
+            return df["value"].iloc[-1] 
         else:
             logger.warning("10-year US Treasury rate not found, defaulting to 0.03")
             return 0.03
@@ -58,22 +58,18 @@ class IvBlackScholes(DataManager):
             - pd.to_datetime(df.get("as_of_date", pd.Timestamp.today()))
         ).dt.days / 365
         
-        # Filtrer par time to expiry
         df_filtered = df[df["time_to_expiry"] > 0.25].reset_index(drop=True)
         
-        # Filtrer par volume si disponible
         if 'volume' in df_filtered.columns:
             df_filtered = df_filtered[df_filtered['volume'] >= self.min_volume]
             logger.info(f"Filtered by volume >= {self.min_volume}: {len(df_filtered)} options remaining")
         
-        # Filtrer par spread bid-ask si disponible
         if 'bid' in df_filtered.columns and 'ask' in df_filtered.columns:
             df_filtered = df_filtered[
                 (df_filtered['ask'] - df_filtered['bid']) / df_filtered['ask'] <= self.max_spread_ratio
             ]
             logger.info(f"Filtered by spread <= {self.max_spread_ratio*100}%: {len(df_filtered)} options remaining")
         
-        # Identifier la colonne de prix
         price_col = (
             "last_trade_price"
             if "last_trade_price" in df_filtered.columns
@@ -84,10 +80,8 @@ class IvBlackScholes(DataManager):
                 "Market price not found (no 'last_trade_price' or 'lastPrice')"
             )
         
-        # Filtrer les prix trop bas (illiquidité)
         df_filtered = df_filtered[df_filtered[price_col] > 0.01]
         
-        # Grouper et préparer les données
         columns_to_select = ["strike", "time_to_expiry", "option_type", price_col]
         if "implied_volatility" in df_filtered.columns and not self.recalculate_iv:
             columns_to_select.append("implied_volatility")
@@ -109,7 +103,7 @@ class IvBlackScholes(DataManager):
                 T=time_to_expiry,
                 sigma=volatility,
                 r=self.free_rate,
-                q=self.dividend_yield,  # Ajout du dividend yield
+                q=self.dividend_yield, 
             )
             model_price = (
                 pricer.price_call() if option_type == "call" else pricer.price_put()
@@ -130,7 +124,6 @@ class IvBlackScholes(DataManager):
                 )
                 return result.root
             else:
-                # Si pas de racine dans le bracket, utiliser minimize
                 result = so.minimize_scalar(
                     lambda x: objective_function(x) ** 2,
                     bounds=(vol_min, vol_max),
@@ -146,14 +139,11 @@ class IvBlackScholes(DataManager):
         """Application du kernel avec option de recalcul"""
         df = self.processed_options.copy()
         
-        # Utiliser les IV existantes si disponibles et si recalculate=False
         if "implied_volatility" in df.columns and not self.recalculate_iv:
             df["implied_vol"] = df["implied_volatility"]
-            # Valider les valeurs existantes
             df = df[(df["implied_vol"] > 0.01) & (df["implied_vol"] < 1.5)]
             logger.info("Using existing implied volatility values")
         else:
-            # Recalculer les IV
             df["implied_vol"] = df.apply(
                 lambda row: self.get_implied_vol(
                     row["strike"],
@@ -165,7 +155,6 @@ class IvBlackScholes(DataManager):
             )
             logger.info("Recalculated implied volatility values")
         
-        # Filtrer les NaN
         df = df[~df["implied_vol"].isna()]
         
         return df.assign(spot_price=self.spot_price).assign(
@@ -181,24 +170,20 @@ class IvBlackScholes(DataManager):
             logger.error("No market data available")
             return False
         
-        # Vérifier les valeurs NaN
         nan_count = df['implied_vol'].isna().sum()
         if nan_count > len(df) * 0.1:
             logger.error(f"Too many NaN values: {nan_count}/{len(df)}")
             return False
         
-        # Vérifier les valeurs aberrantes
         extreme_low = (df['implied_vol'] < 0.001).sum()
         extreme_high = (df['implied_vol'] > 2.0).sum()
         if extreme_low > 0 or extreme_high > 0:
             logger.warning(f"Extreme volatility values: {extreme_low} too low, {extreme_high} too high")
         
-        # Vérifier la couverture du domaine
         strike_coverage = (df['strike'].max() - df['strike'].min()) / self.spot_price
         if strike_coverage < 0.2:
             logger.warning(f"Limited strike coverage: {strike_coverage:.2%}")
         
-        # Vérifier le nombre minimum de points
         if len(df) < 10:
             logger.error(f"Insufficient data points: {len(df)}")
             return False
@@ -212,24 +197,21 @@ class IvBlackScholes(DataManager):
         maturities = surface_dict['maturities_grid']
         vol_grid = surface_dict['volatility_grid']
         
-        # Vérifier la convexité du smile (butterfly arbitrage)
         for i, T in enumerate(maturities):
             vol_slice = vol_grid[i, :]
             if len(vol_slice) < 3:
                 continue
-            # Approximation de la dérivée seconde
             second_diff = np.diff(vol_slice, n=2)
-            if np.any(second_diff < -1e-4):  # Tolérance numérique
+            if np.any(second_diff < -1e-4):  
                 logger.warning(f"Possible butterfly arbitrage detected at T={T:.2f}")
                 return False
         
-        # Vérifier la monotonicité du term structure (pour ATM)
         atm_idx = np.argmin(np.abs(strikes - self.spot_price))
         if atm_idx < len(strikes):
             atm_term = vol_grid[:, atm_idx]
             if len(atm_term) > 1:
                 term_diff = np.diff(atm_term)
-                if np.any(term_diff < -0.15):  # Vol ne devrait pas décroître trop vite
+                if np.any(term_diff < -0.15):  
                     logger.warning("Possible calendar arbitrage detected")
                     return False
         
@@ -260,7 +242,6 @@ class IvBlackScholes(DataManager):
         points = df[["strike", "time_to_expiry"]].values
         values = df["implied_vol"].values
         
-        # Calculer la densité des données pour ajuster le smoothing
         data_density = len(df) / ((x_max - x_min) * (y_max - y_min))
         if data_density > 10:
             sigma = 0.5
@@ -270,7 +251,6 @@ class IvBlackScholes(DataManager):
             sigma = 1.5
         logger.info(f"Data density: {data_density:.2f}, using sigma={sigma} for smoothing")
 
-        # RBF Interpolation
         logger.info("RBF Interpolation...")
         try:
             rbf = interpolate.RBFInterpolator(
@@ -282,7 +262,6 @@ class IvBlackScholes(DataManager):
             logger.warning(f"RBF interpolation failed: {e}")
             Z_rbf = np.full(X.shape, np.nan)
 
-        # Linear interpolation
         logger.info("Linear interpolation...")
         try:
             tri = Delaunay(points)
@@ -292,7 +271,6 @@ class IvBlackScholes(DataManager):
             logger.warning(f"Linear interpolation failed: {e}")
             Z_linear = np.full(X.shape, np.nan)
 
-        # Spline interpolation
         logger.info("Spline interpolation...")
         try:
             x_unique = np.unique(points[:, 0])
@@ -308,7 +286,6 @@ class IvBlackScholes(DataManager):
             logger.warning(f"Spline interpolation failed: {e}")
             Z_spline = np.full(X.shape, np.nan)
 
-        # Combiner les méthodes
         Z_combined = np.copy(Z_linear)
         nan_mask = np.isnan(Z_combined)
         if not np.all(np.isnan(Z_rbf)):
@@ -318,13 +295,10 @@ class IvBlackScholes(DataManager):
         if not np.all(np.isnan(Z_spline)):
             Z_combined[nan_mask] = Z_spline[nan_mask]
 
-        # Appliquer le smoothing adaptatif
         Z_smoothed = gaussian_filter(Z_combined, sigma=sigma)
 
-        # Clip volatility values to reasonable bounds
         Z_smoothed = np.clip(Z_smoothed, 0.01, 1.5)
 
-        # Vérifier l'orientation
         try:
             if not np.allclose(X[0, :], x_grid):
                 logger.debug("Grid orientation mismatch detected, transposing")
@@ -344,7 +318,6 @@ class IvBlackScholes(DataManager):
             "original_values": values,
         }
 
-        # Valider la surface
         if not self.check_arbitrage(self.interpolated_surface):
             logger.warning("Surface may violate arbitrage constraints")
 
@@ -382,7 +355,6 @@ class IvBlackScholes(DataManager):
                 
                 for K in strikes:
                     if K not in subset['strike'].values:
-                        # Limiter l'extrapolation
                         if K < min_strike - max_extrapolation_ratio * strike_range:
                             continue
                         if K > max_strike + max_extrapolation_ratio * strike_range:
