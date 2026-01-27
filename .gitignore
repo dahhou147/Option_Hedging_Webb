@@ -52,7 +52,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# Logs
 *.log
 *.ipynb
 *.csv
@@ -68,12 +67,10 @@ wheels/
 *.jsx
 *.tsx
 *.jsx
-# Local development settings
 .env
 .env.local
 .env.*.local
 
-# OS generated files
 .DS_Store
 .DS_Store?
 ._*

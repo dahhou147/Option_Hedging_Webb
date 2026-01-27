@@ -4,3 +4,4 @@ matplotlib==3.7.1
 pandas==2.0.2
 yfinance==0.2.66
 seaborn>=0.12.0
+openbb>=0.1.22
