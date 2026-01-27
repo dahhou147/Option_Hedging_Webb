@@ -2,10 +2,8 @@
 Dupire's formula is a formula for the implied volatility of an option.
 It is used to reconstruct the dynamic of the underlying asset's volatility.
 """
-pass 
 
-from iv_surface import IvBlackScholes   
-
+from .iv_surface import IvBlackScholes   
 
 class Dupire(IvBlackScholes):
     def __init__(self, ticker):

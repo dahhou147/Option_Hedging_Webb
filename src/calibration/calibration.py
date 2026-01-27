@@ -5,7 +5,8 @@ import numpy as np
 import yfinance as yf
 import pandas as pd
 import logging
-from pricer.pricing_model import BlackScholesPricer, VolatilitySmile
+from ..pricer.black_scholes import BlackScholesPricer
+from ..pricer.volatility_smile import VolatilitySmile
 
 ANNUALIZATION_FACTOR = 252
 DEFAULT_RISK_FREE_RATE = 0.03

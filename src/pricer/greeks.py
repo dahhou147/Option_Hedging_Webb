@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.stats as ss
-from pricing_model import BlackScholesPricer
+from .black_scholes import BlackScholesPricer
 
 class Greeks:
     """Class for Greeks calculations."""

@@ -4,16 +4,9 @@ from scipy.ndimage import gaussian_filter
 from scipy.spatial import Delaunay
 import pandas as pd
 import numpy as np
-import sys
-from pathlib import Path
-
-project_root = Path(__file__).parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
-
-from pricer.pricing_model import BlackScholesPricer
 from openbb import obb
-from config.logging_config import setup_logger
+from ..pricer.black_scholes import BlackScholesPricer
+from ..config.logging_config import setup_logger
 
 logger = setup_logger(name="iv_surface", log_file=None)
 

@@ -1,11 +1,11 @@
-from iv_surface import IvBlackScholes
+from .iv_surface import IvBlackScholes
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from config.logging_config import setup_logger
+from ..config.logging_config import setup_logger
 logger = setup_logger(name="iv_plot_iv", log_file=None)
 
 

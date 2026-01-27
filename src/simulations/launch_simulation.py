@@ -1,6 +1,8 @@
 # %%
-from calibration.calibration import main
-from pricer.pricing_model import ConstructPortfolio, BlackScholesPricer, GirsanovSimulator
+from ..calibration.calibration import main
+from ..pricer.black_scholes import BlackScholesPricer
+from ..pricer.portfolio import ConstructPortfolio
+from ..pricer.girsanov import GirsanovSimulator
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
